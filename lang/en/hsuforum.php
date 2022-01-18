@@ -743,6 +743,7 @@ $string['id'] = 'id';
 $string['switchtoaccessible'] = 'Switch to the accessible view';
 $string['anonymousrecentactivity'] = 'There may have been recent activity in this forum, but the details cannot be displayed because the forum is anonymous.';
 $string['manageforumsubscriptions'] = 'Manage forum subscriptions';
+$string['anonymous'] = 'Anonymously';
 $string['nonanonymous'] = 'Non anonymously';
 $string['hiderecentposts'] = 'Hide recent Posts';
 $string['confighiderecentposts'] = 'Set to yes to stop the display of recent forum posts on the course page.';

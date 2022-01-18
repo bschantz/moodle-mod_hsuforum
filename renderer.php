@@ -400,14 +400,17 @@ class mod_hsuforum_renderer extends plugin_renderer_base {
         $data->subscribe  = '';
         $data->posts      = '';
         $data->fullthread = $fullthread;
-        $data->revealed   = false;
         $data->rawcreated = $post->created;
         $data->rawmodified = $discussion->timemodified;
 
-        if ($forum->anonymous
-                && $postuser->id === $USER->id
-                && $post->reveal) {
-            $data->revealed         = true;
+        $data->revealed   = false;
+        $data->anonymous  = false;
+        if ($forum->anonymous && $postuser->id === $USER->id) {
+            if ($post->reveal) {
+                $data->revealed = true;
+            } else {
+                $data->anonymous = true;
+            }
         }
 
         if ($fullthread && $canreply) {
@@ -509,12 +512,15 @@ class mod_hsuforum_renderer extends plugin_renderer_base {
         $data->tools          = implode(' ', $commands);
         $data->postflags      = implode(' ',$this->post_get_flags($post, $cm, $discussion->id, false));
         $data->depth          = $depth;
-        $data->revealed       = false;
 
-        if ($forum->anonymous
-                && $postuser->id === $USER->id
-                && $post->reveal) {
-            $data->revealed         = true;
+        $data->revealed       = false;
+        $data->anonymous      = false;
+        if ($forum->anonymous && $postuser->id === $USER->id) {
+            if ($post->reveal) {
+                $data->revealed = true;
+            } else {
+                $data->anonymous = true;
+            }
         }
 
         if (!empty($post->children)) {
@@ -622,6 +628,10 @@ class mod_hsuforum_renderer extends plugin_renderer_base {
         if ($d->revealed) {
             $nonanonymous = get_string('nonanonymous', 'mod_hsuforum');
             $revealed = '<span class="label label-danger">'.$nonanonymous.'</span>';
+        }
+        if ($d->anonymous) {
+            $anonymous = get_string('anonymous', 'mod_hsuforum');
+            $revealed = '<span class="label label-success">'.$anonymous.'</span>';
         }
 
 
@@ -747,6 +757,10 @@ HTML;
     public function post_template($p) {
         global $PAGE;
 
+        error_log('=================================================================');
+        error_log(var_export($p, true));
+        error_log('=================================================================');
+
         $byuser = $p->fullname;
         if (!empty($p->userurl)) {
             $byuser = html_writer::link($p->userurl, $p->fullname);
@@ -805,6 +819,10 @@ HTML;
         if ($p->revealed) {
             $nonanonymous = get_string('nonanonymous', 'mod_hsuforum');
             $revealed = '<span class="label label-danger">'.$nonanonymous.'</span>';
+        }
+        if ($p->anonymous) {
+            $anonymous = get_string('anonymous', 'mod_hsuforum');
+            $revealed = '<span class="label label-success">'.$anonymous.'</span>';
         }
 
  return <<<HTML
