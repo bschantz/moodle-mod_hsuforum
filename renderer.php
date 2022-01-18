@@ -1477,6 +1477,8 @@ HTML;
                     $data['thresholdblocked'] = " hsuforum-threshold-blocked ";
                 }
             }
+            // no post data, force reveal to true
+            $post->reveal = 1;
         }
 
         $data += array(
@@ -1606,6 +1608,8 @@ HTML;
                     $data['thresholdblocked'] = " hsuforum-threshold-blocked ";
                 }
             }
+            // default
+            $data['reveal'] = 1;
         }
 
         $data += array(
