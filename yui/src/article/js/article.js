@@ -178,7 +178,6 @@ Y.extend(ARTICLE, Y.Base,
 
         handlePostUpdated: function(e) {
             var dom     = this.get('dom'),
-                form    = this.get('form'),
                 router  = this.get('router');
             dom.handleUpdateDiscussion(e);
             router.handleViewDiscussion(e);

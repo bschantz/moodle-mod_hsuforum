@@ -577,9 +577,10 @@ Y.extend(FORM, Y.Base,
             wrapperNode.one(SELECTORS.INPUT_REPLY).setAttribute('value', parentNode.getData('postid'));
 
             var advNode = wrapperNode.one(SELECTORS.FORM_ADVANCED);
-            advNode.setAttribute('href', advNode.getAttribute('href').replace(/reply=\d+/, 'reply=' + parentNode.getData('postid')));
+            advNode.setAttribute('href',
+                advNode.getAttribute('href').replace(/reply=\d+/, 'reply=' + parentNode.getData('postid')));
             var message = wrapperNode.one('div[id^=editor-target-container-]');
-            advNode.on("click", function (e) {
+            advNode.on("click", function () {
                 advNode.setAttribute('href', advNode.getAttribute('href') + '&msgcontent=' +
                     message.get('textContent'));
             });
@@ -601,7 +602,7 @@ Y.extend(FORM, Y.Base,
          */
         _copyMessage: function(node) {
             var message = node.one(SELECTORS.EDITABLE_MESSAGE).get('innerHTML');
-            if (node.one('.editor_atto') != null) {
+            if (node.one('.editor_atto') !== null) {
                 message = node.one(SELECTORS.EDITABLE_MESSAGE_ATTO).get('innerHTML');
             }
 
@@ -635,7 +636,8 @@ Y.extend(FORM, Y.Base,
             }
 
             this.get('io').submitForm(wrapperNode.one('form'), function(data) {
-                // TODO - yuiformsubmit won't work here as the data will already have been sent at this point. The form is the data, the data variable is what comes back
+                // TODO - yuiformsubmit won't work here as the data will already have been sent at this point. The
+                //        form is the data, the data variable is what comes back
                 data.yuiformsubmit = 1; // So we can detect and class this as an AJAX post later!
                 if (data.errors === true) {
                     wrapperNode.one(SELECTORS.VALIDATION_ERRORS).setHTML(data.html).addClass('notifyproblem');
@@ -860,7 +862,7 @@ Y.extend(FORM, Y.Base,
                     datefs = Y.Node.create('<fieldset/>');
                     datefs.addClass('form-inline');
                     var fitems = Y.all('#discussion_dateform div.row.fitem');
-                    if( !(fitems._nodes.length > 0)) {
+                    if (!fitems._nodes || fitems._nodes.length === 0) {
                         var items = Y.all('#discussion_dateform .form-inline.felement');
                         var titles = Y.all('.col-form-label.d-inline');
                         var title_nodes = [];
@@ -950,7 +952,7 @@ Y.extend(FORM, Y.Base,
             var advNode = Y.one(SELECTORS.FORM_ADVANCED);
             var message = Y.one('div[id^=editor-target-container-]');
             var subject = Y.one('input[name=subject]');
-            advNode.on("click", function (e) {
+            advNode.on("click", function () {
                 advNode.setAttribute('href', advNode.getAttribute('href') + '&msgcontent=' +
                     message.get('textContent') + '&subcontent=' + subject.get('value'));
             });
@@ -1184,7 +1186,6 @@ Y.extend(ARTICLE, Y.Base,
 
         handlePostUpdated: function(e) {
             var dom     = this.get('dom'),
-                form    = this.get('form'),
                 router  = this.get('router');
             dom.handleUpdateDiscussion(e);
             router.handleViewDiscussion(e);
