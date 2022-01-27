@@ -37,6 +37,8 @@ var ROUTER = Y.Base.create('hsuforumRouter', Y.Router, [], {
      * @param {Object} req
      */
     post: function(req) {
+        var contextId = M.mod_hsuforum.Article.ATTRS.contextId;
+        window.console.log('contextId: ', contextId);
         if (!Y.Lang.isUndefined(req.query.reply)) {
             this.get('article').get('form').showReplyToForm(req.query.reply);
         } else if (!Y.Lang.isUndefined(req.query.forum)) {

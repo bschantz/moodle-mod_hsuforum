@@ -28,7 +28,18 @@ FORM.ATTRS = {
      * @type M.mod_hsuforum.Io
      * @required
      */
-    io: { value: null }
+    io: { value: null },
+
+
+    /**
+     * Default editor config
+     *
+     * @attribute editorConfig
+     * @type Object
+     * @default undefined
+     * @readOnly
+     */
+    editorConfig: {value: undefined},
 };
 
 Y.extend(FORM, Y.Base,
@@ -70,6 +81,7 @@ Y.extend(FORM, Y.Base,
             }
             wrapperNode = parentNode.one(SELECTORS.FORM_REPLY_WRAPPER);
 
+            this.attachEditor(wrapperNode);
             this.attachFormWarnings();
 
             // Update form to reply to our post.
@@ -149,6 +161,22 @@ Y.extend(FORM, Y.Base,
             }, this, fileinputs._nodes.length > 0);
         },
 
+        attachEditor: function(contextNode) {
+            var selector = SELECTORS.EDITABLE_MESSAGE_TARGET + ':not([contenteditable])';
+            if (!contextNode) {
+                selector = 'article ' + selector;
+            }
+            Y.all(selector).each(function(target) {
+                var newId = Y.guid('editor-target-container-');
+                target.setAttribute('id', newId);
+                var config = Object.assign(
+                    {elementid: newId, contextId: this.get('io').get('contextId')},
+                    this.get('editorConfig')
+                );
+                new Y.M.editor_atto.Editor(config);
+            }, this);
+        },
+
         /**
          * All of our forms need to warn the user about
          * navigating away when they have changes made
@@ -188,6 +216,10 @@ Y.extend(FORM, Y.Base,
             if (node !== null) {
                 node.empty();
             }
+
+            // this will remove the atto editor from the default reply form
+            // so we want to put it back
+            this.attachEditor();
         },
 
         /**
@@ -442,13 +474,14 @@ Y.extend(FORM, Y.Base,
          */
         showAddDiscussionForm: function() {
             Y.log('Show discussion form', 'info', 'Form');
-            Y.one(SELECTORS.ADD_DISCUSSION_TARGET)
+            var wrapperNode = Y.one(SELECTORS.ADD_DISCUSSION_TARGET)
                 .setHTML(Y.one(SELECTORS.DISCUSSION_TEMPLATE).getHTML())
                 .one(SELECTORS.INPUT_SUBJECT)
                 .focus();
 
             this.resetDateFields();
             this.applyDateFields();
+            this.attachEditor(wrapperNode);
             this.attachFormWarnings();
             try {
                 this.setDefaultDateSettings();
@@ -493,6 +526,7 @@ Y.extend(FORM, Y.Base,
                 } else {
                     postNode.addClass(CSS.POST_EDIT);
                 }
+                this.attachEditor(postNode);
                 postNode.one(SELECTORS.EDITABLE_MESSAGE).focus();
 
                 if (data.isdiscussion) {

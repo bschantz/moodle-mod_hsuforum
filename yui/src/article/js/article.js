@@ -27,7 +27,17 @@ ARTICLE.ATTRS = {
      * @default undefined
      * @required
      */
-    contextId: { value: undefined },
+    contextId: {value: undefined},
+
+    /**
+     * Default editor config
+     *
+     * @attribute editorConfig
+     * @type Object
+     * @default undefined
+     * @readOnly
+     */
+    editorConfig: {value: undefined},
 
     /**
      * Used for REST calls
@@ -36,7 +46,7 @@ ARTICLE.ATTRS = {
      * @type M.mod_hsuforum.Io
      * @readOnly
      */
-    io: { readOnly: true },
+    io: {readOnly: true},
 
     /**
      * Used primarily for updating the DOM
@@ -45,7 +55,7 @@ ARTICLE.ATTRS = {
      * @type M.mod_hsuforum.Dom
      * @readOnly
      */
-    dom: { readOnly: true },
+    dom: {readOnly: true},
 
     /**
      * Used for routing URLs within the same page
@@ -54,7 +64,7 @@ ARTICLE.ATTRS = {
      * @type M.mod_hsuforum.Router
      * @readOnly
      */
-    router: { readOnly: true },
+    router: {readOnly: true},
 
     /**
      * Displays, hides and submits forms
@@ -63,7 +73,7 @@ ARTICLE.ATTRS = {
      * @type M.mod_hsuforum.Form
      * @readOnly
      */
-    form: { readOnly: true },
+    form: {readOnly: true},
 
     /**
      * Maintains an aria live log.
@@ -72,7 +82,7 @@ ARTICLE.ATTRS = {
      * @type M.mod_hsuforum.init_livelog
      * @readOnly
      */
-    liveLog: { readOnly: true },
+    liveLog: {readOnly: true},
 
     /**
      * The show advanced edit link that was clicked most recently,
@@ -89,10 +99,10 @@ Y.extend(ARTICLE, Y.Base,
             this._set('router', new M.mod_hsuforum.Router({article: this, html5: false}));
             this._set('io', new M.mod_hsuforum.Io({contextId: this.get('contextId')}));
             this._set('dom', new M.mod_hsuforum.Dom({io: this.get('io')}));
-            this._set('form', new M.mod_hsuforum.Form({io: this.get('io')}));
+            this._set('form', new M.mod_hsuforum.Form({io: this.get('io'), editorConfig: this.get('editorConfig')}));
             this._set('liveLog', M.mod_hsuforum.init_livelog());
             this.bind();
-            // this.get('router').dispatch();
+            // This.get('router').dispatch();
         },
 
         /**
@@ -101,8 +111,8 @@ Y.extend(ARTICLE, Y.Base,
          */
         bind: function() {
             var firstUnreadPost = document.getElementsByClassName("hsuforum-post-unread")[0];
-            if(firstUnreadPost && location.hash === '#unread') {
-                // get the post parent to focus on
+            if (firstUnreadPost && location.hash === '#unread') {
+                // Get the post parent to focus on
                 var post = document.getElementById(firstUnreadPost.id).parentNode;
                 // Workaround issues that IE has with negative margins in themes.
                 if (navigator.userAgent.match(/Trident|MSIE/)) {
@@ -124,9 +134,9 @@ Y.extend(ARTICLE, Y.Base,
                 return;
             }
 
-            var dom     = this.get('dom'),
-                form    = this.get('form'),
-                router  = this.get('router');
+            var dom = this.get('dom'),
+                form = this.get('form'),
+                router = this.get('router');
 
             // Implement toggling for post to all groups checkbox and groups select
             var posttoallgroups = '.hsuforum-discussion input[name="posttomygroups"]';
@@ -174,11 +184,13 @@ Y.extend(ARTICLE, Y.Base,
 
             // On form cancel, update the URL to view the discussion/post.
             form.on(EVENTS.FORM_CANCELED, router.handleViewDiscussion, router);
+
+            form.attachEditor(this.get('contextId'));
         },
 
         handlePostUpdated: function(e) {
-            var dom     = this.get('dom'),
-                router  = this.get('router');
+            var dom = this.get('dom'),
+                router = this.get('router');
             dom.handleUpdateDiscussion(e);
             router.handleViewDiscussion(e);
             dom.handleNotification(e);

@@ -7,6 +7,7 @@
             "router",
             "core_rating",
             "querystring",
+            "moodle-editor_atto-editor",
             "moodle-mod_hsuforum-io",
             "moodle-mod_hsuforum-livelog",
             "moodle-core-formchangechecker"

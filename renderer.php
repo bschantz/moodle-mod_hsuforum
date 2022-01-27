@@ -757,10 +757,6 @@ HTML;
     public function post_template($p) {
         global $PAGE;
 
-        error_log('=================================================================');
-        error_log(var_export($p, true));
-        error_log('=================================================================');
-
         $byuser = $p->fullname;
         if (!empty($p->userurl)) {
             $byuser = html_writer::link($p->userurl, $p->fullname);
@@ -1753,6 +1749,11 @@ HTML;
         } else {
             $postype = 'edit';
         }
+
+        static $editor_count = 0;
+        $editor_count++;
+        $editor_element = "editor-target-container-$timestamp-$editor_count";
+
         return <<<HTML
 <div class="hsuforum-reply-wrapper$t->thresholdblocked">
     <form method="post" role="form" aria-label="$t->legend" class="hsuforum-form $t->class" action="$actionurl" autocomplete="off">
@@ -1764,15 +1765,17 @@ HTML;
                 $t->userpicture
             </div>
             <div class="hsuforum-post-body">
-            <input type="hidden" id="hsuforum-post-type" value="$postype">
+                <input type="hidden" id="hsuforum-post-type" value="$postype">
                 <label>
                     <span class="accesshide">$t->subjectlabel</span>
                     <input type="text" placeholder="$t->subjectplaceholder" name="subject" class="form-control" $subjectrequired spellcheck="true" value="$subject" maxlength="255" />
                 </label>
                 <div id="editor-info"></div>
+                <textarea id="$editor_element" name="message"></textarea>
+                <!--
                 <textarea name="message" class="hidden"></textarea>
                 <div id="editor-target-container-$timestamp" data-placeholder="$t->messageplaceholder" aria-label="$messagelabel" contenteditable="true" required="required" spellcheck="true" role="textbox" aria-multiline="true" class="hsuforum-textarea">$t->message</div>
-
+                -->
                 $files
                 <div class="advancedoptions">
                     $t->extrahtml
@@ -1793,17 +1796,32 @@ HTML;
 
     public function article_js($context = null) {
         if (!$context instanceof \context) {
-            $contextid = $this->page->context->id;
-        } else {
-            $contextid = $context->id;
+            $context = $this->page->context;
         }
+        $contextid = $context->id;
+
+        // setup defaults for atto
+        $editor = new advanced_editor($context);
+        $editor_meta = $editor->get_data();
+
+        list($plugins, $plugin_modules) = $this->get_editor_atto_plugins(
+            $editor_meta->options,
+            $editor_meta->fpoptions
+        );
+
+        $modules = array_merge(['moodle-mod_hsuforum-article'], $plugin_modules);
         // For some reason, I need to require core_rating manually...
         $this->page->requires->js_module('core_rating');
         $this->page->requires->yui_module(
-            'moodle-mod_hsuforum-article',
+            $modules,
             'M.mod_hsuforum.init_article',
             array(array(
                 'contextId' => $contextid,
+                'editorConfig' => $this->get_editor_default_params(
+                    $editor_meta->options,
+                    $editor_meta->fpoptions,
+                    $plugins
+                ),
             ))
         );
         $this->page->requires->strings_for_js(array(
@@ -1812,6 +1830,22 @@ HTML;
             'deletesure',
         ), 'mod_hsuforum');
         $this->page->requires->string_for_js('changesmadereallygoaway', 'moodle');
+
+        // atto strings
+        $this->page->requires->strings_for_js(array(
+            'editor_command_keycode',
+            'editor_control_keycode',
+            'plugin_title_shortcut',
+            'textrecovered',
+            'autosavefailed',
+            'autosavesucceeded',
+            'errortextrecovery'
+        ), 'editor_atto');
+        $this->page->requires->strings_for_js(array(
+            'warning',
+            'info'
+        ), 'moodle');
+
     }
 
     protected function get_post_user_url($cm, $postuser) {
@@ -2093,5 +2127,107 @@ HTML;
      */
     public function render_big_search_form(\mod_hsuforum\output\big_search_form $form) {
         return $this->render_from_template('mod_hsuforum/big_search_form', $form->export_for_template($this));
+    }
+
+    /**
+     * Create a params array to init the editor.
+     *
+     * @param array|null $options =null
+     * @param array|null $fpoptions
+     * @param null $plugins
+     * @return array
+     * @throws coding_exception
+     * @throws dml_exception
+     */
+    protected function get_editor_default_params(array $options = null, array $fpoptions = null, $plugins = null) {
+        global $PAGE;
+
+        $directionality = get_string('thisdirection', 'langconfig');
+        $lang           = current_language();
+        $autosave       = true;
+        $autosavefrequency = get_config('editor_atto', 'autosavefrequency');
+        if (isset($options['autosave'])) {
+            $autosave       = $options['autosave'];
+        }
+        $contentcss     = $PAGE->theme->editor_css_url()->out(false);
+
+        // Autosave disabled for guests and not logged in users.
+        if (isguestuser() OR !isloggedin()) {
+            $autosave = false;
+        }
+        $params = array(
+            'content_css' => $contentcss,
+            'autosaveEnabled' => $autosave,
+            'autosaveFrequency' => $autosavefrequency,
+            'language' => $lang,
+            'directionality' => $directionality,
+            'filepickeroptions' => array(),
+            'plugins' => $plugins,
+        );
+        if ($fpoptions) {
+            $params['filepickeroptions'] = $fpoptions;
+        }
+        return $params;
+    }
+
+    protected function get_editor_atto_plugins($options, $fpoptions) {
+        global $PAGE;
+
+        if (array_key_exists('atto:toolbar', $options)) {
+            $configstr = $options['atto:toolbar'];
+        } else {
+            $configstr = get_config('editor_atto', 'toolbar');
+        }
+
+        $grouplines = explode("\n", $configstr);
+
+        $groups = array();
+
+        foreach ($grouplines as $groupline) {
+            $line = explode('=', $groupline);
+            if (count($line) > 1) {
+                $group = trim(array_shift($line));
+                $plugins = array_map('trim', explode(',', array_shift($line)));
+                $groups[$group] = $plugins;
+            }
+        }
+
+        $modules = array('moodle-editor_atto-editor');
+        $options['context'] = empty($options['context']) ? context_system::instance() : $options['context'];
+
+        $jsplugins = array();
+        foreach ($groups as $group => $plugins) {
+            $groupplugins = array();
+            foreach ($plugins as $plugin) {
+                // Do not die on missing plugin.
+                if (!core_component::get_component_directory('atto_' . $plugin))  {
+                    continue;
+                }
+
+                // Remove manage files if requested.
+                if ($plugin == 'managefiles' && isset($options['enable_filemanagement']) && !$options['enable_filemanagement']) {
+                    continue;
+                }
+
+                $jsplugin = array();
+                $jsplugin['name'] = $plugin;
+                $jsplugin['params'] = array();
+                $modules[] = 'moodle-atto_' . $plugin . '-button';
+
+                component_callback('atto_' . $plugin, 'strings_for_js');
+                $extra = component_callback('atto_' . $plugin, 'params_for_js', array('dummy', $options, $fpoptions));
+
+                if ($extra) {
+                    $jsplugin = array_merge($jsplugin, $extra);
+                }
+
+                // We always need the plugin name.
+                $PAGE->requires->string_for_js('pluginname', 'atto_' . $plugin);
+                $groupplugins[] = $jsplugin;
+            }
+            $jsplugins[] = array('group'=>$group, 'plugins'=>$groupplugins);
+        }
+
+        return array($jsplugins, $modules);
     }
 }

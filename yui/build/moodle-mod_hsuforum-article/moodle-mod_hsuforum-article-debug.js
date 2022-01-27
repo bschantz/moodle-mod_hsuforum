@@ -20,6 +20,7 @@ var CSS = {
         DISCUSSION_TEMPLATE: '#hsuforum-discussion-template',
         DISCUSSION_VIEW: '.hsuforum-thread-view',
         EDITABLE_MESSAGE: '[contenteditable]',
+        EDITABLE_MESSAGE_TARGET: 'textarea[id^="editor-target-container"]:not([style*="display: none"])',
         EDITABLE_MESSAGE_ATTO: '[id^="editor-target-container"][contenteditable]:not([style*="display: none"])',
         FORM: '.hsuforum-form',
         FORM_ADVANCED: '.hsuforum-use-advanced',
@@ -339,6 +340,8 @@ var ROUTER = Y.Base.create('hsuforumRouter', Y.Router, [], {
      * @param {Object} req
      */
     post: function(req) {
+        var contextId = M.mod_hsuforum.Article.ATTRS.contextId;
+        window.console.log('contextId: ', contextId);
         if (!Y.Lang.isUndefined(req.query.reply)) {
             this.get('article').get('form').showReplyToForm(req.query.reply);
         } else if (!Y.Lang.isUndefined(req.query.forum)) {
@@ -530,7 +533,18 @@ FORM.ATTRS = {
      * @type M.mod_hsuforum.Io
      * @required
      */
-    io: { value: null }
+    io: { value: null },
+
+
+    /**
+     * Default editor config
+     *
+     * @attribute editorConfig
+     * @type Object
+     * @default undefined
+     * @readOnly
+     */
+    editorConfig: {value: undefined},
 };
 
 Y.extend(FORM, Y.Base,
@@ -572,6 +586,7 @@ Y.extend(FORM, Y.Base,
             }
             wrapperNode = parentNode.one(SELECTORS.FORM_REPLY_WRAPPER);
 
+            this.attachEditor(wrapperNode);
             this.attachFormWarnings();
 
             // Update form to reply to our post.
@@ -651,6 +666,22 @@ Y.extend(FORM, Y.Base,
             }, this, fileinputs._nodes.length > 0);
         },
 
+        attachEditor: function(contextNode) {
+            var selector = SELECTORS.EDITABLE_MESSAGE_TARGET + ':not([contenteditable])';
+            if (!contextNode) {
+                selector = 'article ' + selector;
+            }
+            Y.all(selector).each(function(target) {
+                var newId = Y.guid('editor-target-container-');
+                target.setAttribute('id', newId);
+                var config = Object.assign(
+                    {elementid: newId, contextId: this.get('io').get('contextId')},
+                    this.get('editorConfig')
+                );
+                new Y.M.editor_atto.Editor(config);
+            }, this);
+        },
+
         /**
          * All of our forms need to warn the user about
          * navigating away when they have changes made
@@ -690,6 +721,10 @@ Y.extend(FORM, Y.Base,
             if (node !== null) {
                 node.empty();
             }
+
+            // this will remove the atto editor from the default reply form
+            // so we want to put it back
+            this.attachEditor();
         },
 
         /**
@@ -944,13 +979,14 @@ Y.extend(FORM, Y.Base,
          */
         showAddDiscussionForm: function() {
             Y.log('Show discussion form', 'info', 'Form');
-            Y.one(SELECTORS.ADD_DISCUSSION_TARGET)
+            var wrapperNode = Y.one(SELECTORS.ADD_DISCUSSION_TARGET)
                 .setHTML(Y.one(SELECTORS.DISCUSSION_TEMPLATE).getHTML())
                 .one(SELECTORS.INPUT_SUBJECT)
                 .focus();
 
             this.resetDateFields();
             this.applyDateFields();
+            this.attachEditor(wrapperNode);
             this.attachFormWarnings();
             try {
                 this.setDefaultDateSettings();
@@ -995,6 +1031,7 @@ Y.extend(FORM, Y.Base,
                 } else {
                     postNode.addClass(CSS.POST_EDIT);
                 }
+                this.attachEditor(postNode);
                 postNode.one(SELECTORS.EDITABLE_MESSAGE).focus();
 
                 if (data.isdiscussion) {
@@ -1045,7 +1082,17 @@ ARTICLE.ATTRS = {
      * @default undefined
      * @required
      */
-    contextId: { value: undefined },
+    contextId: {value: undefined},
+
+    /**
+     * Default editor config
+     *
+     * @attribute editorConfig
+     * @type Object
+     * @default undefined
+     * @readOnly
+     */
+    editorConfig: {value: undefined},
 
     /**
      * Used for REST calls
@@ -1054,7 +1101,7 @@ ARTICLE.ATTRS = {
      * @type M.mod_hsuforum.Io
      * @readOnly
      */
-    io: { readOnly: true },
+    io: {readOnly: true},
 
     /**
      * Used primarily for updating the DOM
@@ -1063,7 +1110,7 @@ ARTICLE.ATTRS = {
      * @type M.mod_hsuforum.Dom
      * @readOnly
      */
-    dom: { readOnly: true },
+    dom: {readOnly: true},
 
     /**
      * Used for routing URLs within the same page
@@ -1072,7 +1119,7 @@ ARTICLE.ATTRS = {
      * @type M.mod_hsuforum.Router
      * @readOnly
      */
-    router: { readOnly: true },
+    router: {readOnly: true},
 
     /**
      * Displays, hides and submits forms
@@ -1081,7 +1128,7 @@ ARTICLE.ATTRS = {
      * @type M.mod_hsuforum.Form
      * @readOnly
      */
-    form: { readOnly: true },
+    form: {readOnly: true},
 
     /**
      * Maintains an aria live log.
@@ -1090,7 +1137,7 @@ ARTICLE.ATTRS = {
      * @type M.mod_hsuforum.init_livelog
      * @readOnly
      */
-    liveLog: { readOnly: true },
+    liveLog: {readOnly: true},
 
     /**
      * The show advanced edit link that was clicked most recently,
@@ -1107,10 +1154,10 @@ Y.extend(ARTICLE, Y.Base,
             this._set('router', new M.mod_hsuforum.Router({article: this, html5: false}));
             this._set('io', new M.mod_hsuforum.Io({contextId: this.get('contextId')}));
             this._set('dom', new M.mod_hsuforum.Dom({io: this.get('io')}));
-            this._set('form', new M.mod_hsuforum.Form({io: this.get('io')}));
+            this._set('form', new M.mod_hsuforum.Form({io: this.get('io'), editorConfig: this.get('editorConfig')}));
             this._set('liveLog', M.mod_hsuforum.init_livelog());
             this.bind();
-            // this.get('router').dispatch();
+            // This.get('router').dispatch();
         },
 
         /**
@@ -1119,8 +1166,8 @@ Y.extend(ARTICLE, Y.Base,
          */
         bind: function() {
             var firstUnreadPost = document.getElementsByClassName("hsuforum-post-unread")[0];
-            if(firstUnreadPost && location.hash === '#unread') {
-                // get the post parent to focus on
+            if (firstUnreadPost && location.hash === '#unread') {
+                // Get the post parent to focus on
                 var post = document.getElementById(firstUnreadPost.id).parentNode;
                 // Workaround issues that IE has with negative margins in themes.
                 if (navigator.userAgent.match(/Trident|MSIE/)) {
@@ -1142,9 +1189,9 @@ Y.extend(ARTICLE, Y.Base,
                 return;
             }
 
-            var dom     = this.get('dom'),
-                form    = this.get('form'),
-                router  = this.get('router');
+            var dom = this.get('dom'),
+                form = this.get('form'),
+                router = this.get('router');
 
             // Implement toggling for post to all groups checkbox and groups select
             var posttoallgroups = '.hsuforum-discussion input[name="posttomygroups"]';
@@ -1192,11 +1239,13 @@ Y.extend(ARTICLE, Y.Base,
 
             // On form cancel, update the URL to view the discussion/post.
             form.on(EVENTS.FORM_CANCELED, router.handleViewDiscussion, router);
+
+            form.attachEditor(this.get('contextId'));
         },
 
         handlePostUpdated: function(e) {
-            var dom     = this.get('dom'),
-                router  = this.get('router');
+            var dom = this.get('dom'),
+                router = this.get('router');
             dom.handleUpdateDiscussion(e);
             router.handleViewDiscussion(e);
             dom.handleNotification(e);
@@ -1314,6 +1363,7 @@ M.mod_hsuforum.dispatchClick = function(el) {
         "router",
         "core_rating",
         "querystring",
+        "moodle-editor_atto-editor",
         "moodle-mod_hsuforum-io",
         "moodle-mod_hsuforum-livelog",
         "moodle-core-formchangechecker"
