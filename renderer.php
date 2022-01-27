@@ -1771,7 +1771,7 @@ HTML;
                     <input type="text" placeholder="$t->subjectplaceholder" name="subject" class="form-control" $subjectrequired spellcheck="true" value="$subject" maxlength="255" />
                 </label>
                 <div id="editor-info"></div>
-                <textarea id="$editor_element" name="message"></textarea>
+                <textarea id="$editor_element" name="message">$t->message</textarea>
                 <!--
                 <textarea name="message" class="hidden"></textarea>
                 <div id="editor-target-container-$timestamp" data-placeholder="$t->messageplaceholder" aria-label="$messagelabel" contenteditable="true" required="required" spellcheck="true" role="textbox" aria-multiline="true" class="hsuforum-textarea">$t->message</div>
